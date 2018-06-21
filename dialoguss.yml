@@ -1,0 +1,15 @@
+#test_app.yaml
+url: http://localhost:8000/
+dial: "*1234*1234#"
+# 'global' phone number, overriden per session
+phoneNumber: 265888123456
+sessions:
+  - id: 12345678910
+    phoneNumber: 265888123456
+    description: "Should show disk space statistics"
+    steps:
+      - text: "*123*1234#"
+        expect: "USSD Server Stats Daemon\nHost: my.server.com\nIP: 127.0.0.1:8000\n\n1. Disk Space\n2. Memory\n3. Network\n4. Top Processes\n#. Quit"
+      - text: "1"
+        expect: " Disk Space on my.server.com\n\n/dev/sda4\n  5GB/50GB (90%%)\n  /dev/sda4 25GB/50GB (25%%)"
+    
