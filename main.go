@@ -92,7 +92,9 @@ func (u *UssdApp) handler(w http.ResponseWriter, req *http.Request) {
 
 	session, err := phada.ParseUssdRequest(req)
 	if err != nil {
-		log.Fatalf("Failed to parse UssdRequest from http.Request. Error {}", err)
+		log.Printf("Failed to parse UssdRequest from http.Request. Error %s", err)
+		fmt.Fprintf(w, ussdEnd("Failed to process request"))
+		return
 	}
 	session.SetState(STATE_NOOP)
 
@@ -100,7 +102,9 @@ func (u *UssdApp) handler(w http.ResponseWriter, req *http.Request) {
 
 	session, err = u.sessionStore.Get(session.SessionID)
 	if err != nil {
-		log.Fatalf("Failed to read session %s", err)
+		log.Printf("Failed to read session %s", err)
+		fmt.Fprintf(w, ussdEnd("Failed to process request"))
+		return
 	}
 
 	if session.ReadIn() == "" {
