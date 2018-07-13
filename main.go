@@ -1,11 +1,16 @@
 package main
 
 import (
-	"bitbucket.org/nndi/phada"
 	"flag"
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
+
+	"bitbucket.org/nndi/phada"
+	"github.com/arduino/go-system-stats/disk"
+	"github.com/arduino/go-system-stats/mem"
+	humanize "github.com/dustin/go-humanize"
 )
 
 const (
@@ -132,10 +137,12 @@ func (u *UssdApp) handler(w http.ResponseWriter, req *http.Request) {
 		fmt.Fprintf(w, ussdContinue(text))
 		break
 	case STATE_DISK_SPACE:
-		fmt.Fprintf(w, ussdEnd(SAMPLE_DISK_STATS))
+		fmt.Fprintf(w, ussdEnd(readDiskInfo(
+			[]string{"/", "/home", "/var"},
+		)))
 		break
 	case STATE_MEMORY:
-		fmt.Fprintf(w, ussdEnd(SAMPLE_MEM_STATS))
+		fmt.Fprintf(w, ussdEnd(readMemoryInfo()))
 		break
 	case STATE_NETWORK:
 		fmt.Fprintf(w, ussdEnd(SAMPLE_NET_STATS))
@@ -148,6 +155,62 @@ func (u *UssdApp) handler(w http.ResponseWriter, req *http.Request) {
 		fmt.Fprintf(w, ussdEnd("# exit()"))
 		break
 	}
+}
+
+func readDiskInfo(mountPoints []string) string {
+	fsStats, err := disk.GetStats()
+	if err != nil {
+		return "Disk\nFailed to fetch data"
+	}
+
+	var text strings.Builder
+	text.WriteString("Disk\n\n")
+	templ := "%s\n  %s/%s\n"
+	for _, mnt := range mountPoints {
+		for _, d := range fsStats {
+			if d.MountPoint == mnt {
+				text.WriteString(fmt.Sprintf(
+					templ,
+					d.MountPoint,
+					humanize.Bytes(d.FreeSpace),
+					humanize.Bytes(d.DiskSize),
+				))
+				break
+			}
+		}
+	}
+
+	return text.String()
+}
+
+func readMemoryInfo() string {
+	mem, err := mem.GetStats()
+	if err != nil {
+		log.Printf("Failed to fetch memory stats. %s", err)
+		return "Memory\nFailed to fetch data"
+	}
+	text := `Memory
+
+mem
+  Total: %s
+  Free: %s
+  Avail: %s
+  Buffr: %s
+  Cache: %s
+swap
+  Total: %s
+  Free: %s
+`
+	// seems the arduino mem module returns kilobyte range values..
+	return fmt.Sprintf(text,
+		humanize.Bytes(mem.TotalMem*humanize.KByte),
+		humanize.Bytes(mem.FreeMem*humanize.KByte),
+		humanize.Bytes(mem.AvailableMem*humanize.KByte),
+		humanize.Bytes(mem.Buffers*humanize.KByte),
+		humanize.Bytes(mem.Cached*humanize.KByte),
+		humanize.Bytes(mem.TotalSwapMem*humanize.KByte),
+		humanize.Bytes(mem.FreeSwapMem*humanize.KByte),
+	)
 }
 
 func init() {
