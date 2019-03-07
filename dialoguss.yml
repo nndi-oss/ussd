@@ -1,4 +1,4 @@
-#test_app.yaml
+# Dialoguss configuration for testing the USSD server
 url: http://localhost:8000/
 dial: "*1234*1234#"
 # 'global' phone number, overriden per session
@@ -9,7 +9,21 @@ sessions:
     description: "Should show disk space statistics"
     steps:
       - text: "*123*1234#"
-        expect: "USSD Server Stats Daemon\nHost: my.server.com\nIP: 127.0.0.1:8000\n\n1. Disk Space\n2. Memory\n3. Network\n4. Top Processes\n#. Quit"
+        expect: |
+          USSD Server Stats Daemon
+          Host: my.server.com
+          IP: 127.0.0.1:8000
+          
+          1. Disk Space
+          2. Memory
+          3. Network
+          4. Top Processes
+          \#. Quit
       - text: "1"
-        expect: " Disk Space on my.server.com\n\n/dev/sda4\n  5GB/50GB (90%%)\n  /dev/sda4 25GB/50GB (25%%)"
-    
+        expect: |
+          Disk Space on my.server.com
+          
+          /dev/sda4
+            5GB/50GB (90%%)
+          /dev/sda4
+            25GB/50GB (25%%)
