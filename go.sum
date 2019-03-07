@@ -1,0 +1,11 @@
+bitbucket.org/nndi/phada v0.0.0-20180621152419-e0115143476e h1:w7Wd9jYn8lBenicxg23U1hlURMOLRc3mxVZ87rUK/iM=
+bitbucket.org/nndi/phada v0.0.0-20180621152419-e0115143476e/go.mod h1:YBDWJHG8YsNOhJOH7jECOBcJtCfibrcS7wvw37d9mrQ=
+github.com/arduino/go-system-stats v0.0.0-20180215112344-1598cba505aa h1:7HHJYWUdxbSEH+L/kKN0PicCm2n/1psq6w0qkN+oN1Y=
+github.com/arduino/go-system-stats v0.0.0-20180215112344-1598cba505aa/go.mod h1:enB9Xx68Fen6OweknaIpPj8qtlFFPcRQ25wLlCJRbjo=
+github.com/arduino/gonetworkmanager v0.0.0-20180215112023-793c32a95fe2/go.mod h1:v+d/fcOz5YSWCwBMmhuIMQqqO3nHqXWqhkLIuJgf6Z4=
+github.com/dustin/go-humanize v1.0.0 h1:VSnTsYCnlFHaM2/igO1h6X3HA71jcobQuxemgkq4zYo=
+github.com/dustin/go-humanize v1.0.0/go.mod h1:HtrtbFcZ19U5GC7JDqmcUSB87Iq5E25KnS6fMYU6eOk=
+github.com/godbus/dbus v4.1.0+incompatible/go.mod h1:/YcGZj5zSblfDWMMoOzV4fas9FZnQYTkDnsGvmh2Grw=
+github.com/orcaman/concurrent-map v0.0.0-20180319144342-a05df785d2dc h1:7nyfMLo3yzesbmwJrgFGscsnkvw/zirlWJ4oQqr9CzQ=
+github.com/orcaman/concurrent-map v0.0.0-20180319144342-a05df785d2dc/go.mod h1:Lu3tH6HLW3feq74c2GC+jIMS/K2CFcDWnWD9XkenwhI=
+github.com/satori/go.uuid v1.2.0/go.mod h1:dA0hQrYB0VpLJoorglMZABFdXlWrHn1NEOzdhQKdks0=
