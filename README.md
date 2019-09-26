@@ -16,11 +16,11 @@ proof of concept of an idea we're calling the `USSD of Things` ;)
 Run it with the following command
 
 ```sh
-$ go get -u "github.com/nndi-oss/ussd-server-stats-daemon"
+$ go get -u "github.com/nndi-oss/ussd"
 
-$ cd $GOPATH/src/github.com/nndi-oss/ussd-server-stats-daemon
+$ cd $GOPATH/src/github.com/nndi-oss/ussd
 
-$ go run main.go -h "my.server.com" -bind "localhost:8000"
+$ go run main.go -h "my.server.com" -bind "localhost:8000" -sample
 ```
 
 ## Basic USSD interaction Concept
