@@ -1,26 +1,41 @@
 USSD Server Stats Daemon (USSD)
 ===
 
-At [NNDI](https://nndi-tech.com) we believe that USSD is a great protocol for the
-African market and we like to play around with such technologies
-to see how far we can stretch them for innovative applications. 
+This project implements a **proof of concept** USSD application that allows 
+System Administrators to check/monitor basic stats of their servers via their mobile phone.
 
-This project implements a **proof of concept** USSD application that allows system administrators
-to check some basic stats about their servers via their mobile phone. It's a 
-proof of concept of an idea we're calling the `USSD of Things` ;)
+## Background
 
-> NOTE: It's still a work in progress and not an offical NNDI product
+At [NNDI](https://nndi-tech.com) we like to play around with different technologies to 
+see how far we can stretch them for innovative applications. USSD is an old-but-great protocol 
+that's popular and serves a lot of applications in Africa including Mobile Money and Banking.
+
+We decided to try using USSD for something atypical - a kind of IOT application;
+perhaps you can call this a `USSD of Things` project. ;)
 
 ## Usage
+
+This project is intended to be used with USSD APIs provided by [AfricasTalking](https://africastalking.com) - so you will need to get access to their services to run it 
+behind an actual USSD Shortcode. However, you can run it locally and test it with
+[dialoguss](https://github.com/nndi-oss/dialoguss)
 
 Run it with the following command
 
 ```sh
 $ go get -u "github.com/nndi-oss/ussd"
 
-$ cd $GOPATH/src/github.com/nndi-oss/ussd
+$ cd $GOPATH/bin
 
-$ go run main.go -h "my.server.com" -bind "localhost:8000" -sample
+$ ./ussd -h "my.server.com" -bind "localhost:8000"
+```
+
+### Dummy Server
+
+The dummy server provides hard-coded results for all calls and doesn't actually
+read stats from the host machine. You can use this to test the server
+
+```sh
+$ go run main.go -h "my.server.com" -bind "localhost:8000" -dummy
 ```
 
 ## Basic USSD interaction Concept
@@ -90,6 +105,8 @@ top:
 3. http (0.1 cpu, 50MB mem)
 ```
 
+> NOTE: It's still a work in progress and not (yet) an offical NNDI product
+
 ---
 
-Copyright (c) 2018, NNDI
+Copyright (c) 2018 - 2019, NNDI
