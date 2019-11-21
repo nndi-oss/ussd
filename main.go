@@ -5,12 +5,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strings"
 
 	"bitbucket.org/nndi/phada"
-	"github.com/arduino/go-system-stats/disk"
-	"github.com/arduino/go-system-stats/mem"
-	humanize "github.com/dustin/go-humanize"
 )
 
 const (
@@ -30,46 +26,12 @@ IP: %s
 3. Network
 4. Top Processes
 #. Quit`
-
-	SAMPLE_DISK_STATS = `Disk Space on my.server.com
-
-/dev/sda4  
-  5GB/50GB (90%%)
-/dev/sda4
-  25GB/50GB (25%%)`
-
-	SAMPLE_MEM_STATS = `Memory
-mem
-  Total: 6GB
-  Used: 4.3GB
-  Rsrv: 1.7GB
-swap
-  Total: 4GB
-  Used: 0GB
-  Rsrv: 0GB`
-
-	SAMPLE_NET_STATS = `Network
-
-epn03
-  up:  yes
-  in:  30GB
-  out: 60GB
-eth0
-  up:  yes
-  in:  30GB
-  out: 60GB`
-
-	SAMPLE_PROC_STATS = `Processes
-
-top:
-1. java (0.2 cpu, 2GB mem)
-2. systemd (0.1 cpu, 500MB mem)
-3. http (0.1 cpu, 50MB mem)`
 )
 
 var (
-	hostName    string
-	bindAddress string
+	hostName      string
+	bindAddress   string
+	isDummyServer bool
 )
 
 type UssdApp struct {
@@ -137,18 +99,35 @@ func (u *UssdApp) handler(w http.ResponseWriter, req *http.Request) {
 		fmt.Fprintf(w, ussdContinue(text))
 		break
 	case STATE_DISK_SPACE:
-		fmt.Fprintf(w, ussdEnd(readDiskInfo(
-			[]string{"/", "/home", "/var"},
-		)))
+		if isDummyServer {
+			fmt.Fprintf(w, ussdEnd(SAMPLE_DISK_STATS))
+		} else {
+			fmt.Fprintf(w, ussdEnd(ReadDiskInfo(
+				[]string{"/", "/home", "/var"},
+			)))
+		}
 		break
 	case STATE_MEMORY:
-		fmt.Fprintf(w, ussdEnd(readMemoryInfo()))
+		if isDummyServer {
+			fmt.Fprintf(w, ussdEnd(SAMPLE_MEM_STATS))
+		} else {
+			fmt.Fprintf(w, ussdEnd(ReadMemoryInfo()))
+		}
+
 		break
 	case STATE_NETWORK:
-		fmt.Fprintf(w, ussdEnd(SAMPLE_NET_STATS))
+		if isDummyServer {
+			fmt.Fprintf(w, ussdEnd(SAMPLE_NET_STATS))
+		} else {
+			fmt.Fprintf(w, ussdEnd(SAMPLE_NET_STATS))
+		}
 		break
 	case STATE_TOP_PROCESSES:
-		fmt.Fprintf(w, ussdEnd(SAMPLE_PROC_STATS))
+		if isDummyServer {
+			fmt.Fprintf(w, ussdEnd(SAMPLE_PROC_STATS))
+		} else {
+			fmt.Fprintf(w, ussdEnd(SAMPLE_PROC_STATS))
+		}
 		break
 	case STATE_NOOP:
 	default:
@@ -157,63 +136,8 @@ func (u *UssdApp) handler(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func readDiskInfo(mountPoints []string) string {
-	fsStats, err := disk.GetStats()
-	if err != nil {
-		return "Disk\nFailed to fetch data"
-	}
-
-	var text strings.Builder
-	text.WriteString("Disk\n\n")
-	templ := "%s\n  %s/%s\n"
-	for _, mnt := range mountPoints {
-		for _, d := range fsStats {
-			if d.MountPoint == mnt {
-				text.WriteString(fmt.Sprintf(
-					templ,
-					d.MountPoint,
-					humanize.Bytes(d.FreeSpace),
-					humanize.Bytes(d.DiskSize),
-				))
-				break
-			}
-		}
-	}
-
-	return text.String()
-}
-
-func readMemoryInfo() string {
-	mem, err := mem.GetStats()
-	if err != nil {
-		log.Printf("Failed to fetch memory stats. %s", err)
-		return "Memory\nFailed to fetch data"
-	}
-	text := `Memory
-
-mem
-  Total: %s
-  Free: %s
-  Avail: %s
-  Buffr: %s
-  Cache: %s
-swap
-  Total: %s
-  Free: %s
-`
-	// seems the arduino mem module returns kilobyte range values..
-	return fmt.Sprintf(text,
-		humanize.Bytes(mem.TotalMem*humanize.KByte),
-		humanize.Bytes(mem.FreeMem*humanize.KByte),
-		humanize.Bytes(mem.AvailableMem*humanize.KByte),
-		humanize.Bytes(mem.Buffers*humanize.KByte),
-		humanize.Bytes(mem.Cached*humanize.KByte),
-		humanize.Bytes(mem.TotalSwapMem*humanize.KByte),
-		humanize.Bytes(mem.FreeSwapMem*humanize.KByte),
-	)
-}
-
 func init() {
+	flag.BoolVar(&isDummyServer, "dummy", false, "Start the dummy server - uses hardcoded values")
 	flag.StringVar(&hostName, "h", "example.com", "Hostname")
 	flag.StringVar(&bindAddress, "b", "127.0.0.1:8000", "Bind address")
 }
