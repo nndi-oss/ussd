@@ -45,15 +45,13 @@ IP: %s
 5 Services`
 
 	SERVICES_MENU = `Services
-
 1 Check Status
 2 Start Service
 3 Stop Service
 4 Restart Service
 5 Enable Service
 6 Disable Service
-
-* Main Menu`
+# Main Menu`
 )
 
 var (
@@ -260,6 +258,8 @@ func init() {
 }
 
 func main() {
+	flag.Parse()
+
 	ussdApp := newUssdApp(phada.NewRistrettoSessionStore())
 	http.HandleFunc("/", ussdApp.handler)
 	log.Fatalf("Failed to start server. Error %s", http.ListenAndServe(bindAddress, nil))

@@ -4,26 +4,35 @@ dial: "*1234*1234#"
 # 'global' phone number, overriden per session
 phoneNumber: 265888123456
 sessions:
-  - id: 12345678910
+  - id: 1234567890
     phoneNumber: 265888123456
-    description: "Should show disk space statistics"
+    description: "Should start httpd service"
     steps:
-      - text: "*123*1234#"
-        expect: |
+      - expect: |-
           USSD Server Stats Daemon
-          Host: my.server.com
+          Host: example.com
           IP: 127.0.0.1:8000
           
           1. Disk Space
           2. Memory
           3. Network
           4. Top Processes
-          \#. Quit
-      - text: "1"
-        expect: |
-          Disk Space on my.server.com
-          
-          /dev/sda4
-            5GB/50GB (90%%)
-          /dev/sda4
-            25GB/50GB (25%%)
+          5. Services
+      - text: "5"
+        expect: |-
+          Services
+          1 Check Status
+          2 Start Service
+          3 Stop Service
+          4 Restart Service
+          5 Enable Service
+          6 Disable Service
+          # Main Menu
+      - text: "2"
+        expect: |-
+          Start Service
+          Enter service name: 
+      - text: "--httpd"
+        expect: |-
+          $ systemctl start httpd
+          Result: Service started successfully.
