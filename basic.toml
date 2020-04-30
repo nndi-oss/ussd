@@ -1,0 +1,4 @@
+server_name = "server.ussd.io"
+host = "localhost"
+port = 8000
+log_level = "DEBUG"

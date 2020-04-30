@@ -3,10 +3,12 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"net/http"
+	"os"
 
 	"bitbucket.org/nndi/phada"
+	log "github.com/inconshreveable/log15"
+	"github.com/pelletier/go-toml"
 )
 
 const (
@@ -34,9 +36,8 @@ const (
 
 	STATE_EXIT = -1
 
-	USSD_MENU = `USSD Server Stats Daemon
+	USSD_MENU = `USSD Sysadmin
 Host: %s
-IP: %s
 
 1 Disk Space
 2 Memory
@@ -55,20 +56,24 @@ IP: %s
 )
 
 var (
-	hostName      string
-	bindAddress   string
+	configFile    string
 	isDummyServer bool
+	hostName      string
 )
 
 type UssdApp struct {
-	sessionStore phada.SessionStore
-	CurrentState int
+	host            string
+	sessionStore    phada.SessionStore
+	servicectl      ServiceManager
+	allowedServices []string
 }
 
-func newUssdApp(sessionStore phada.SessionStore) *UssdApp {
+// newUssdApp creates a new instance of the USSD handler
+func newUssdApp(hostName string, services ServiceManager, sessionStore phada.SessionStore) *UssdApp {
 	return &UssdApp{
+		host:         hostName,
 		sessionStore: sessionStore,
-		CurrentState: STATE_EXIT,
+		servicectl:   services,
 	}
 }
 
@@ -90,7 +95,7 @@ func (u *UssdApp) handler(w http.ResponseWriter, req *http.Request) {
 
 	newSession, err := phada.ParseUssdRequest(req)
 	if err != nil {
-		log.Printf("Failed to parse UssdRequest from http.Request. Error %s", err)
+		log.Error("Failed to parse UssdRequest from http.Request.", "err", err)
 		fmt.Fprintf(w, ussdEnd("Failed to process request"))
 		return
 	}
@@ -99,9 +104,11 @@ func (u *UssdApp) handler(w http.ResponseWriter, req *http.Request) {
 
 	session, err := u.sessionStore.Get(newSession.SessionID)
 	if err != nil {
-		log.Printf("Failed to read session %s", err)
+		log.Info("Did not find existing session, creating new session", "error", err)
 		session = newSession
 	}
+
+	sessionLogger := log.New("sessionID", session.SessionID, "phoneNumber", session.PhoneNumber)
 
 	if session.ReadIn() == "" {
 		session.SetState(STATE_MENU)
@@ -133,12 +140,13 @@ func (u *UssdApp) handler(w http.ResponseWriter, req *http.Request) {
 
 	switch session.State {
 	case STATE_MENU:
-		text := fmt.Sprintf(USSD_MENU, hostName, bindAddress)
+		text := fmt.Sprintf(USSD_MENU, u.host)
 		u.SaveSession(session, STATE_PROCESS_MENU)
 		fmt.Fprintf(w, ussdContinue(text))
 		break
 
 	case STATE_DISK_SPACE:
+		sessionLogger.Info("Checking disk usage")
 		if isDummyServer {
 			fmt.Fprintf(w, ussdEnd(SAMPLE_DISK_STATS))
 		} else {
@@ -148,6 +156,7 @@ func (u *UssdApp) handler(w http.ResponseWriter, req *http.Request) {
 		}
 		break
 	case STATE_MEMORY:
+		sessionLogger.Info("Checking memory usage")
 		if isDummyServer {
 			fmt.Fprintf(w, ussdEnd(SAMPLE_MEM_STATS))
 		} else {
@@ -156,6 +165,7 @@ func (u *UssdApp) handler(w http.ResponseWriter, req *http.Request) {
 
 		break
 	case STATE_NETWORK:
+		sessionLogger.Info("Checking network stats")
 		if isDummyServer {
 			fmt.Fprintf(w, ussdEnd(SAMPLE_NET_STATS))
 		} else {
@@ -208,44 +218,67 @@ func (u *UssdApp) handler(w http.ResponseWriter, req *http.Request) {
 			break
 		}
 
-		u.SaveSession(session, STATE_EXIT)
+		u.SaveSession(session, STATE_SERVICES_MENU)
 		break
 
 	case STATE_CHECK_SERVICE:
 		serviceName := session.ReadIn()
-		// TODO: Actually run the systemctl command here
-		fmt.Fprintf(w, ussdEnd("$ systemctl status %s\nResult: Service is active"), serviceName)
+		sessionLogger.Info("Checking service status", "service", serviceName)
+		if output, err := u.servicectl.Status(serviceName); err == nil {
+			// TODO: Check for Status active...
+			fmt.Fprintf(w, ussdEnd("$ systemctl is-active %s\nResult: Service is %s"), serviceName, output)
+		}
 		break
 	case STATE_START_SERVICE:
 		serviceName := session.ReadIn()
-		// TODO: Actually run the systemctl command here
-		fmt.Fprintf(w, ussdEnd("$ systemctl start %s\nResult: Service started successfully."), serviceName)
+		sessionLogger.Info("Attempting to start service", "service", serviceName)
+		if _, err := u.servicectl.Start(serviceName); err == nil {
+			fmt.Fprintf(w, ussdEnd("$ systemctl start %s\nResult: Service started successfully."), serviceName)
+		} else {
+			fmt.Fprintf(w, ussdEnd("FAILED to start service %s."), serviceName)
+		}
 		break
 	case STATE_STOP_SERVICE:
 		serviceName := session.ReadIn()
-		// TODO: Actually run the systemctl command here
-		fmt.Fprintf(w, ussdEnd("$ systemctl stop %s\nResult: Service stopped successfully."), serviceName)
+		sessionLogger.Info("Attempting to stop service", "service", serviceName)
+		if _, err := u.servicectl.Stop(serviceName); err == nil {
+			fmt.Fprintf(w, ussdEnd("$ systemctl stop %s\nResult: Service stopped successfully."), serviceName)
+		} else {
+			fmt.Fprintf(w, ussdEnd("FAILED to stop service %s."), serviceName)
+		}
 		break
 	case STATE_RESTART_SERVICE:
 		serviceName := session.ReadIn()
-		// TODO: Actually run the systemctl command here
-		fmt.Fprintf(w, ussdEnd("$ systemctl restart %s\nResult: Service restarted successfully."), serviceName)
+		sessionLogger.Info("Attempting to restart service", "service", serviceName)
+		if _, err := u.servicectl.Restart(serviceName); err == nil {
+			fmt.Fprintf(w, ussdEnd("$ systemctl restart %s\nResult: Service restarted successfully."), serviceName)
+		} else {
+			fmt.Fprintf(w, ussdEnd("FAILED to restart service %s."), serviceName)
+		}
 		break
 	case STATE_ENABLE_SERVICE:
 		serviceName := session.ReadIn()
-		// TODO: Actually run the systemctl command here
-		fmt.Fprintf(w, ussdEnd("$ systemctl enable %s\nResult: Service enabled successfully."), serviceName)
+		sessionLogger.Info("Attempting to enable service", "service", serviceName)
+		if _, err := u.servicectl.Enable(serviceName); err == nil {
+			fmt.Fprintf(w, ussdEnd("$ systemctl enable %s\nResult: Service enabled successfully."), serviceName)
+		} else {
+			fmt.Fprintf(w, ussdEnd("FAILED to enable service %s."), serviceName)
+		}
 		break
 	case STATE_DISABLE_SERVICE:
 		serviceName := session.ReadIn()
-		// TODO: Actually run the systemctl command here
-		fmt.Fprintf(w, ussdEnd("$ systemctl disable %s\nResult: Service disabled successfully."), serviceName)
+		sessionLogger.Info("Attempting to disable service", "service", serviceName)
+		if _, err := u.servicectl.Disable(serviceName); err == nil {
+			fmt.Fprintf(w, ussdEnd("$ systemctl disable %s\nResult: Service disabled successfully."), serviceName)
+		} else {
+			fmt.Fprintf(w, ussdEnd("FAILED to disable service %s."), serviceName)
+		}
 		break
 
 	case STATE_EXIT:
 	default:
 		u.SaveSession(session, STATE_EXIT)
-		fmt.Fprintf(w, ussdEnd("# exit()"))
+		fmt.Fprintf(w, ussdEnd("Have a nice day :)"))
 		break
 	}
 	u.sessionStore.PutHop(session)
@@ -253,14 +286,26 @@ func (u *UssdApp) handler(w http.ResponseWriter, req *http.Request) {
 
 func init() {
 	flag.BoolVar(&isDummyServer, "dummy", false, "Start the dummy server - uses hardcoded values")
-	flag.StringVar(&hostName, "hostname", "example.com", "Hostname")
-	flag.StringVar(&bindAddress, "b", "127.0.0.1:8000", "Bind address")
+	flag.StringVar(&configFile, "config", "ussd.toml", "Configuration file, defaults to 'ussd.toml'")
 }
 
 func main() {
 	flag.Parse()
 
-	ussdApp := newUssdApp(phada.NewRistrettoSessionStore())
+	tree, err := toml.LoadFile(configFile)
+	if err != nil {
+		fmt.Printf("Failed to read configuration file %v", err)
+		os.Exit(-1)
+		return
+	}
+
+	displayName := tree.Get("server_name").(string)
+	host := tree.Get("host").(string)
+	port := tree.Get("port").(int64)
+	bindAddress := fmt.Sprintf("%s:%d", host, port)
+
+	ussdApp := newUssdApp(displayName, &Systemctl{"/bin/"}, phada.NewRistrettoSessionStore())
+
 	http.HandleFunc("/", ussdApp.handler)
-	log.Fatalf("Failed to start server. Error %s", http.ListenAndServe(bindAddress, nil))
+	log.Error("Starting server", "err", http.ListenAndServe(bindAddress, nil))
 }

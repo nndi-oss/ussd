@@ -9,9 +9,8 @@ sessions:
     description: "Should start httpd service"
     steps:
       - expect: |-
-          USSD Server Stats Daemon
+          USSD Sysadmin
           Host: example.com
-          IP: 127.0.0.1:8000
           
           1. Disk Space
           2. Memory
