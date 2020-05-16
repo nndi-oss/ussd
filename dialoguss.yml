@@ -17,7 +17,7 @@ sessions:
           3. Network
           4. Top Processes
           5. Services
-      - text: "5"
+      - userInput: "5"
         expect: |-
           Services
           1 Check Status
@@ -27,11 +27,11 @@ sessions:
           5 Enable Service
           6 Disable Service
           # Main Menu
-      - text: "2"
+      - userInput: "2"
         expect: |-
           Start Service
           Enter service name: 
-      - text: "--httpd"
+      - userInput: "--httpd"
         expect: |-
           $ systemctl start httpd
           Result: Service started successfully.
